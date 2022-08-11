@@ -1,1 +1,0 @@
-.\.venv\Scripts\Activate.bat && python .\proxy_notif_bot.py
