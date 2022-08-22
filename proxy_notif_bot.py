@@ -1,39 +1,40 @@
+import asyncio
 import json
 from pathlib import Path
-from time import sleep
 
 import requests
-from discord import RequestsWebhookAdapter, Webhook
+from aiohttp import ClientSession
+from discord import Webhook
 
-MINS_30 = 1800
+SLEEP_TIME_SEC = 1800  # 30 mins
 REPEAT_MSG_EVERY = 5
 
 config = json.loads(Path("config.json").read_text())
-WEBHOOK_URL = config["api_url"]
+WEBHOOK_URL = config["webhook_url"]
 PROXY_URL = config["proxy_url"]
 
 
-def main():
-    webhook = Webhook.from_url(
-        WEBHOOK_URL,
-        adapter=RequestsWebhookAdapter(),
-    )
+#TODO: investigate spam
+async def main():
+    async with ClientSession() as session:
+        webhook = Webhook.from_url(WEBHOOK_URL, session=session)
 
-    latch_message_count = 0
+        latch_message_count = 0
 
-    while True:
+        while True:
 
-        try:
-            requests.get("http://google.com", proxies={"http": PROXY_URL})
-            latch_message_count = 0
-        except requests.exceptions.ConnectionError:
-            if latch_message_count % REPEAT_MSG_EVERY == 0:
-                webhook.send("Proxy Server Connection Failed")
-            latch_message_count += 1
-            # TODO: then re attempt with another config?
-            # TODO: try to detect different failure modes like the current one, invalid credentials etc
-        sleep(MINS_30)
+            try:
+                # TODO: use async here
+                requests.get("http://google.com", proxies={"http": PROXY_URL})
+                latch_message_count = 0
+            except requests.exceptions.ConnectionError:
+                if latch_message_count % REPEAT_MSG_EVERY == 0:
+                    await webhook.send("Proxy Server Connection Failed")
+                latch_message_count += 1
+                # TODO: then re attempt with another config?
+                # TODO: try to detect different failure modes like the current one, invalid credentials etc
+            await asyncio.sleep(SLEEP_TIME_SEC)
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
